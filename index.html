@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird - Web</title>
+<style>
+  body { margin:0; background:skyblue; overflow:hidden; }
+  canvas { display:block; margin:0 auto; background:skyblue; }
+  #status {
+    position: absolute;
+    top: 10px; left: 10px;
+    background: rgba(0,0,0,0.5);
+    color: white; padding: 5px 10px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+  }
+  #startBtn {
+    position:absolute; top:50%; left:50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 30px;
+    font-size: 18px; font-weight: bold;
+    background: yellow; border: none;
+    cursor: pointer; border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="status">Score: 0</div>
+<button id="startBtn">Click to Start</button>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const statusEl = document.getElementById("status");
+const startBtn = document.getElementById("startBtn");
+
+let gravity = 0.10;
+let jumpStrength = -4.5;
+let birdY = canvas.height / 2;
+let birdX = 80;
+let birdVelocity = 0;
+let pipes = [];
+let score = 0;
+let gameOver = false;
+let birdImg = new Image();
+birdImg.src = "https://i.postimg.cc/gJjZBzL3/Screenshot-2025-06-30-234259.png"; // Apna PNG link yahan do
+
+let gameStarted = false;
+
+// Image load hone ke baad hi start button kaam karega
+birdImg.onload = () => {
+  startBtn.disabled = false;
+};
+
+function flap() {
+  if (!gameOver) {
+    birdVelocity = jumpStrength;
+  }
+}
+
+function spawnPipe() {
+  let gap = 150;
+  let topHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
+  let bottomY = topHeight + gap;
+  pipes.push({
+    x: canvas.width,
+    topHeight: topHeight,
+    bottomY: bottomY,
+    width: 50,
+    scored: false
+  });
+}
+
+function updateGame() {
+  if (!gameOver && gameStarted) {
+    // Gravity
+    birdVelocity += gravity;
+    birdY += birdVelocity;
+
+    // Ground / Ceiling hit
+    if (birdY <= 0 || birdY + 30 >= canvas.height) {
+      endGame();
+    }
+
+    // Pipes move
+    for (let pipe of pipes) {
+      pipe.x -= 2;
+
+      // Collision check
+      if (
+        birdX + 30 > pipe.x &&
+        birdX < pipe.x + pipe.width &&
+        (birdY < pipe.topHeight || birdY + 30 > pipe.bottomY)
+      ) {
+        endGame();
+      }
+
+      // Score update
+      if (!pipe.scored && pipe.x + pipe.width < birdX) {
+        score++;
+        pipe.scored = true;
+        statusEl.innerText = "Score: " + score;
+      }
+    }
+
+    // Remove off-screen pipes
+    pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+
+    // Pipe spawn
+    if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+      spawnPipe();
+    }
+  }
+}
+
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw bird
+  ctx.drawImage(birdImg, birdX, birdY, 30, 30);
+
+  // Draw pipes
+  ctx.fillStyle = "green";
+  for (let pipe of pipes) {
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.topHeight);
+    ctx.fillRect(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY);
+  }
+
+  if (gameOver) {
+    ctx.fillStyle = "red";
+    ctx.font = "32px Arial";
+    ctx.fillText("GAME OVER", canvas.width/2 - 90, canvas.height/2);
+  }
+}
+
+function gameLoop() {
+  updateGame();
+  drawGame();
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  gameOver = true;
+  startBtn.style.display = "block";
+  startBtn.innerText = "Restart";
+}
+
+startBtn.addEventListener("click", () => {
+  // Reset
+  birdY = canvas.height / 2;
+  birdVelocity = 0;
+  pipes = [];
+  score = 0;
+  gameOver = false;
+  gameStarted = true;
+  statusEl.innerText = "Score: 0";
+  startBtn.style.display = "none";
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" || e.code === "ArrowUp") flap();
+});
+canvas.addEventListener("click", flap); // Mobile tap
+
+gameLoop();
+</script>
+</body>
+</html>
